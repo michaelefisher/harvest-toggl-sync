@@ -1,3 +1,6 @@
+#!/usr/bin/env python3
+
+import argparse
 import csv
 import itertools
 import os
@@ -67,37 +70,58 @@ def group_by_date(sorted_rows):
         yield date, list(rows)
 
 
-modified_data: List[Dict[bytes, bytes]] = []
+def read_file(file: str):
 
-with open("fixtures/ingest/data.csv", "r") as file:
-    reader = csv.DictReader(file)
-    next(reader)
+    modified_data: List[Dict[bytes, bytes]] = []
 
-    # Sort and group the rows by the first column - Date
-    sorted_rows = sorted(reader, key=lambda row: row["Date"])
+    with open(file, "r") as file:
+        reader = csv.DictReader(file)
+        next(reader)
 
-    for date, rows in group_by_date(sorted_rows):
-        for updated_data in add_hours_for_day(rows):
-            modified_data.append(updated_data)
+        # Sort and group the rows by the first column - Date
+        sorted_rows = sorted(reader, key=lambda row: row["Date"])
 
-print("Modified data: ", modified_data)
+        for date, rows in group_by_date(sorted_rows):
+            for updated_data in add_hours_for_day(rows):
+                modified_data.append(updated_data)
 
-for row in modified_data:
-    data = requests.post(
-        f"https://api.track.toggl.com/api/v9/workspaces/{WORKSPACE_ID}/time_entries?meta=true",
-        json={
-            "billable": True,
-            "created_with": "python-toggl",
-            "description": "Software development",
-            "duration": int(row["Total Hours"]),
-            "project_id": PROJECT_ID,
-            "start": format_datetime(row["Date"]),
-            "wid": WORKSPACE_ID,
-            "workspace_id": WORKSPACE_ID,
-        },
-        headers={
-            "content-type": "application/json",
-            "Authorization": "Basic %s" % b64encode(toggl_api_key).decode("ascii"),
-        },
-    )
-    print(data.json())
+    print("Modified data: ", modified_data)
+
+    for row in modified_data:
+        data = requests.post(
+            f"https://api.track.toggl.com/api/v9/workspaces/{WORKSPACE_ID}/time_entries?meta=true",
+            json={
+                "billable": True,
+                "created_with": "python-toggl",
+                "description": "Software development",
+                "duration": int(row["Total Hours"]),
+                "project_id": PROJECT_ID,
+                "start": format_datetime(row["Date"]),
+                "wid": WORKSPACE_ID,
+                "workspace_id": WORKSPACE_ID,
+            },
+            headers={
+                "content-type": "application/json",
+                "Authorization": "Basic %s" % b64encode(toggl_api_key).decode("ascii"),
+            },
+        )
+        print(data.json())
+
+
+def main():
+    parser = argparse.ArgumentParser(description="Parser for Harvest CSV ->\
+                                     Toggle API")
+
+    # Adding arguments
+    parser.add_argument('-f', '--file', type=str, help='Filename')
+
+    # Parsing arguments
+    args = parser.parse_args()
+    if args and args.file:
+        filename = args.file
+
+    read_file(filename)
+
+if __name__ == "__main__":
+    main()
+
