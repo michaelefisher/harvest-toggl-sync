@@ -10,9 +10,6 @@ from typing import Dict, List
 
 import requests
 
-
-PROJECT_ID: int = 201698919
-PROJECT_NAME: str = "Reach Backend Support"
 WORKSPACE_ID: int = 5534737
 
 toggl_api_key: bytes = f"{os.environ['TOGGL_API_KEY']}:api_token".encode()
@@ -70,7 +67,8 @@ def group_by_date(sorted_rows):
         yield date, list(rows)
 
 
-def read_file(file: str):
+def read_file(file: str, project_id: int, project_name: str, workspace_id: int
+              = WORKSPACE_ID, dry_run: bool = False):
 
     modified_data: List[Dict[bytes, bytes]] = []
 
@@ -88,39 +86,71 @@ def read_file(file: str):
     print("Modified data: ", modified_data)
 
     for row in modified_data:
-        data = requests.post(
-            f"https://api.track.toggl.com/api/v9/workspaces/{WORKSPACE_ID}/time_entries?meta=true",
-            json={
+        if not dry_run:
+            data = requests.post(
+                f"https://api.track.toggl.com/api/v9/workspaces/{WORKSPACE_ID}/time_entries?meta=true",
+                json={
+                    "billable": True,
+                    "created_with": "python-toggl",
+                    "description": "Software development",
+                    "duration": int(row["Total Hours"]),
+                    "project_id": project_id,
+                    "start": format_datetime(row["Date"]),
+                    "wid": workspace_id,
+                    "workspace_id": workspace_id,
+                },
+                headers={
+                    "content-type": "application/json",
+                    "Authorization": "Basic %s" % b64encode(toggl_api_key).decode("ascii"),
+                },
+            )
+            print(data.json())
+        else:
+            print(json.pprint({
                 "billable": True,
                 "created_with": "python-toggl",
                 "description": "Software development",
                 "duration": int(row["Total Hours"]),
-                "project_id": PROJECT_ID,
+                "project_id": project_id,
                 "start": format_datetime(row["Date"]),
-                "wid": WORKSPACE_ID,
-                "workspace_id": WORKSPACE_ID,
-            },
-            headers={
-                "content-type": "application/json",
-                "Authorization": "Basic %s" % b64encode(toggl_api_key).decode("ascii"),
-            },
-        )
-        print(data.json())
-
+                "wid": workspace_id,
+                "workspace_id": workspace_id,
+            }))
 
 def main():
     parser = argparse.ArgumentParser(description="Parser for Harvest CSV ->\
                                      Toggle API")
 
     # Adding arguments
-    parser.add_argument('-f', '--file', type=str, help='Filename')
+    parser.add_argument('-f', '--file', type=str, help='Filename',
+                        required=True)
+    parser.add_argument('-p', '--project', type=int, help='Project ID',
+                        required=True)
+    parser.add_argument('-n', '--name', type=str, help='Project Name',
+                        required=True)
+    parser.add_argument('-w', '--workspace', type=str, help='Workspace ID',
+                        required=False)
+    parser.add_argument('-d', '--dry-run', action='store_true', help='Dry run',
+                        required=False)
 
     # Parsing arguments
     args = parser.parse_args()
-    if args and args.file:
+    if args and args.file and args.project and args.name and args.workspace and
+    args.dry_run:
         filename = args.file
-
-    read_file(filename)
+        project_id = args.project
+        project_name = args.name
+        workspace_id = args.workspace
+        dry_run = args.dry_run
+        read_file(filename, project_id, project_name, workspace_id)
+    elif args and args.file and args.project and args.name and args.dry_run:
+        filename = args.file
+        project_id = args.project
+        project_name = args.name
+        read_file(filename, project_id, project_name)
+        dry_run = args.dry_run
+    else:
+        print("Invalid arguments")
 
 if __name__ == "__main__":
     main()
