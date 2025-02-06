@@ -135,8 +135,7 @@ def main():
 
     # Parsing arguments
     args = parser.parse_args()
-    if args and args.file and args.project and args.name and args.workspace and
-    args.dry_run:
+    if args and args.file and args.project and args.name and args.workspace and args.dry_run:
         filename = args.file
         project_id = args.project
         project_name = args.name
