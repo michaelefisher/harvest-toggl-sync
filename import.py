@@ -128,7 +128,7 @@ def main():
                         required=True)
     parser.add_argument('-n', '--name', type=str, help='Project Name',
                         required=True)
-    parser.add_argument('-w', '--workspace', type=str, help='Workspace ID',
+    parser.add_argument('-w', '--workspace', type=int, help='Workspace ID',
                         required=False)
     parser.add_argument('-d', '--dry-run', action='store_true', help='Dry run',
                         required=False)
