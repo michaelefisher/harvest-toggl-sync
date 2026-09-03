@@ -44,7 +44,6 @@ dependencies = [
     { name = "charset-normalizer" },
     { name = "idna" },
     { name = "requests" },
-    { name = "typing" },
     { name = "urllib3" },
 ]
 
@@ -54,7 +53,6 @@ requires-dist = [
     { name = "charset-normalizer", specifier = "==3.3.2" },
     { name = "idna", specifier = "==3.7" },
     { name = "requests", specifier = "==2.32.3" },
-    { name = "typing", specifier = "==3.7.4.3" },
     { name = "urllib3", specifier = "==2.3.0" },
 ]
 
@@ -81,12 +79,6 @@ sdist = { url = "https://files.pythonhosted.org/packages/63/70/2bf7780ad2d390a8d
 wheels = [
     { url = "https://files.pythonhosted.org/packages/f9/9b/335f9764261e915ed497fcdeb11df5dfd6f7bf257d4a6a2a686d80da4d54/requests-2.32.3-py3-none-any.whl", hash = "sha256:70761cfe03c773ceb22aa2f671b4757976145175cdfca038c02654d061d6dcc6", size = 64928, upload-time = "2024-05-29T15:37:47.027Z" },
 ]
-
-[[package]]
-name = "typing"
-version = "3.7.4.3"
-source = { registry = "https://pypi.org/simple" }
-sdist = { url = "https://files.pythonhosted.org/packages/05/d9/6eebe19d46bd05360c9a9aae822e67a80f9242aabbfc58b641b957546607/typing-3.7.4.3.tar.gz", hash = "sha256:1187fb9c82fd670d10aa07bbb6cfcfe4bdda42d6fab8d5134f04e8c4d0b71cc9", size = 78592, upload-time = "2020-07-13T23:19:43.758Z" }
 
 [[package]]
 name = "urllib3"
