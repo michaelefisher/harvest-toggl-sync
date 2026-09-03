@@ -1,0 +1,14 @@
+[project]
+name = "harvest-toggl-sync"
+version = "0.1.0"
+description = "Add your description here"
+readme = "README.md"
+requires-python = ">=3.12"
+dependencies = [
+    "certifi==2024.6.2",
+    "charset-normalizer==3.3.2",
+    "idna==3.7",
+    "requests==2.32.3",
+    "typing==3.7.4.3",
+    "urllib3==2.3.0",
+]
