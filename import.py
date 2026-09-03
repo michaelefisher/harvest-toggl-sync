@@ -6,6 +6,8 @@ import json
 import itertools
 import os
 import math
+import sys
+import time
 from base64 import b64encode
 from datetime import datetime, timedelta
 from typing import Dict, List
@@ -75,17 +77,23 @@ def group_by_date(sorted_rows):
 def read_file(file_path: str, project_id: int, project_name: str, workspace_id: int = WORKSPACE_ID, dry_run: bool = False):
     modified_data: List[Dict[str, str]] = []
 
+    csv_total_hours: float = 0.0
+
     with open(file_path, "r") as file:
         reader = csv.DictReader(file)
 
         # Sort and group the rows by the first column - Date
         sorted_rows = sorted(reader, key=lambda row: row["Date"])
+        csv_total_hours = sum(float(row["Hours"]) for row in sorted_rows)
 
         for date, rows in group_by_date(sorted_rows):
             for updated_data in add_hours_for_day(rows):
                 modified_data.append(updated_data)
 
     dry_run_list = []
+    posted_seconds = 0.0
+    failures = []
+
     for row in modified_data:
         payload={
                 "billable": True,
@@ -98,19 +106,57 @@ def read_file(file_path: str, project_id: int, project_name: str, workspace_id: 
                 "wid": workspace_id,
                 "workspace_id": workspace_id,
         }
-        if not dry_run:
+
+        # A zero-length day produces start == stop, which Toggl rejects.
+        if row["Duration"] <= 0:
+            print(f"SKIP {row['Date']}: duration is 0")
+            continue
+
+        if dry_run:
+            dry_run_list.append(payload)
+            posted_seconds += row["Duration"]
+            continue
+
+        # Toggl rate limits per token. Retry on 429 and 5xx instead of
+        # dropping the entry silently.
+        for attempt in range(5):
             response = requests.post(
-                f"https://api.track.toggl.com/api/v9/workspaces/{WORKSPACE_ID}/time_entries?meta=true",
+                f"https://api.track.toggl.com/api/v9/workspaces/{workspace_id}/time_entries?meta=true",
                 json=payload,
                 headers={
                     "content-type": "application/json",
                     "Authorization": "Basic %s" % b64encode(toggl_api_key).decode("ascii"),
                 },
             )
-            print(response.json())
+            if response.status_code == 429 or response.status_code >= 500:
+                time.sleep(2 ** attempt)
+                continue
+            break
+
+        if response.status_code >= 400:
+            failures.append((row["Date"], response.status_code, response.text[:200]))
+            print(f"FAIL {row['Date']}: HTTP {response.status_code} {response.text[:200]}")
         else:
-            dry_run_list.append(payload)
-    print(json.dumps(dry_run_list))
+            posted_seconds += row["Duration"]
+            print(f"OK   {row['Date']}: {row['Duration'] / 3600:.2f}h")
+
+        time.sleep(1.0)
+
+    if dry_run:
+        print(json.dumps(dry_run_list))
+
+    # Reconcile against the source file so a partial import cannot pass unnoticed.
+    print(f"\ndays processed : {len(modified_data)}")
+    print(f"hours in CSV   : {csv_total_hours:.2f}")
+    print(f"hours accepted : {posted_seconds / 3600:.2f}")
+    if failures:
+        print(f"FAILED         : {len(failures)} day(s)")
+        for date, code, body in failures:
+            print(f"  {date}  HTTP {code}  {body}")
+        sys.exit(1)
+    if abs(csv_total_hours - posted_seconds / 3600) > 0.01:
+        print("MISMATCH: accepted hours do not equal the CSV total")
+        sys.exit(1)
 
 def main():
     parser = argparse.ArgumentParser(description="Parser for Harvest CSV ->\
